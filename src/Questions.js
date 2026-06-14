@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, Text, View, Image, StyleSheet, TouchableOpacity, Platform } from "react-native";
+import { ScrollView, Text, View, Image, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
 import * as SQLite from "expo-sqlite";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
@@ -32,6 +32,37 @@ export default function Questions({ route, navigation }) {
           },
           (_, error) => {
             console.log(error);
+          }
+        );
+      });
+    }
+  }
+
+  async function deleteQuestao(id, index) {
+    if (Platform.OS === "web") {
+      try {
+        const stored = await AsyncStorage.getItem("questoes");
+        let questoes = stored ? JSON.parse(stored) : [];
+        questoes = questoes.filter(q => q.id !== id); // remove pelo id
+        await AsyncStorage.setItem("questoes", JSON.stringify(questoes));
+        setQuestoes(questoes.filter(q => q.prova_id === prova.id));
+        Alert.alert("Sucesso", "Questão excluída!");
+      } catch (error) {
+        console.log(error);
+        Alert.alert("Erro", "Não foi possível excluir a questão.");
+      }
+    } else {
+      db.transaction(tx => {
+        tx.executeSql(
+          "DELETE FROM questoes WHERE id = ?;",
+          [id],
+          () => {
+            loadQuestoes();
+            Alert.alert("Sucesso", "Questão excluída!");
+          },
+          (_, error) => {
+            console.log(error);
+            Alert.alert("Erro", "Não foi possível excluir a questão.");
           }
         );
       });
@@ -82,6 +113,14 @@ export default function Questions({ route, navigation }) {
           {q.image ? (
             <Image source={{ uri: q.image }} style={styles.cardImage} />
           ) : null}
+
+          {/* Botão de excluir questão */}
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => deleteQuestao(q.id, index)}
+          >
+            <Text style={styles.deleteText}>Excluir</Text>
+          </TouchableOpacity>
         </View>
       ))}
 
@@ -125,4 +164,12 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   fabText: { fontSize: 28, color: "#fff", fontWeight: "bold" },
+  deleteButton: {
+    marginTop: 10,
+    backgroundColor: "#ff4444",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  deleteText: { color: "#fff", fontWeight: "bold" },
 });
