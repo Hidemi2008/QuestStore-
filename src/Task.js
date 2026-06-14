@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import { Text, TouchableOpacity, View, StyleSheet, ScrollView, Image, Platform, Alert } from "react-native";
+import { Text, TouchableOpacity, View, StyleSheet, ScrollView, Image, Platform, Alert, SafeAreaView } from "react-native";
 import * as SQLite from "expo-sqlite";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 
-const db = Platform.OS !== "web" ? SQLite.openDatabase("provas.db") : null;
+const db = Platform.OS !== "web" ? SQLite.openDatabaseSync("provas.db") : null;
 
 export default function Task({ navigation }) {
   const [provas, setProvas] = useState([]);
@@ -19,18 +19,12 @@ export default function Task({ navigation }) {
         console.log(error);
       }
     } else {
-      db.transaction(tx => {
-        tx.executeSql(
-          "SELECT * FROM provas;",
-          [],
-          (_, { rows }) => {
-            setProvas(rows._array);
-          },
-          (_, error) => {
-            console.log(error);
-          }
-        );
-      });
+      try {
+        const rows = db.getAllSync("SELECT * FROM provas;");
+        setProvas(rows);
+      } catch (error) {
+        console.log(error);
+      }
     }
   }
 
@@ -48,24 +42,17 @@ export default function Task({ navigation }) {
         Alert.alert("Erro", "Não foi possível excluir a prova.");
       }
     } else {
-      db.transaction(tx => {
-        tx.executeSql(
-          "DELETE FROM provas WHERE id = ?;",
-          [id],
-          () => {
-            loadProvas();
-            Alert.alert("Sucesso", "Prova excluída!");
-          },
-          (_, error) => {
-            console.log(error);
-            Alert.alert("Erro", "Não foi possível excluir a prova.");
-          }
-        );
-      });
+      try {
+        db.runSync("DELETE FROM provas WHERE id = ?;", [id]);
+        loadProvas();
+        Alert.alert("Sucesso", "Prova excluída!");
+      } catch (error) {
+        console.log(error);
+        Alert.alert("Erro", "Não foi possível excluir a prova.");
+      }
     }
   }
 
-  // Atualiza sempre que a tela ganha foco
   useFocusEffect(
     React.useCallback(() => {
       loadProvas();
@@ -73,74 +60,79 @@ export default function Task({ navigation }) {
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: "#1e90ff", fontSize: 18 }}>
-            {"< Voltar"}
-          </Text>
-        </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={{ color: "#1e90ff", fontSize: 18 }}>
+              {"< Voltar"}
+            </Text>
+          </TouchableOpacity>
 
-        <View>
-          <Text style={styles.title}>Provas</Text>
-          <Text style={styles.subtitle}>
-            {provas.length} Provas Cadastradas
-          </Text>
-        </View>
-      </View>
-
-      <ScrollView style={styles.list}>
-        {provas.map((prova, index) => (
-          <View key={index} style={styles.card}>
-            {/* Clique no card leva para Questions */}
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Questions", { prova })}
-              style={{ flex: 1 }}
-            >
-              <Text style={styles.cardTitle}>{prova.title}</Text>
-              {prova.description ? (
-                <Text style={styles.cardSubject}>{prova.description}</Text>
-              ) : (
-                <Text style={styles.cardSubject}>Sem descrição</Text>
-              )}
-              {prova.image ? (
-                <Image
-                  source={{ uri: prova.image }}
-                  style={styles.cardImage}
-                />
-              ) : null}
-            </TouchableOpacity>
-
-            {/* Botão de excluir separado */}
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => deleteProva(prova.id, index)}
-            >
-              <Text style={styles.deleteText}>Excluir</Text>
-            </TouchableOpacity>
+          <View>
+            <Text style={styles.title}>Provas</Text>
+            <Text style={styles.subtitle}>
+              {provas.length} Provas Cadastradas
+            </Text>
           </View>
-        ))}
-      </ScrollView>
+        </View>
 
-      <View style={styles.fabContainer}>
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate("NewTask")}
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
         >
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
+          {provas.map((prova, index) => (
+            <View key={index} style={styles.card}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("Questions", { prova })}
+                style={{ flex: 1 }}
+              >
+                <Text style={styles.cardTitle}>{prova.title}</Text>
+                {prova.description ? (
+                  <Text style={styles.cardSubject}>{prova.description}</Text>
+                ) : (
+                  <Text style={styles.cardSubject}>Sem descrição</Text>
+                )}
+                {prova.image ? (
+                  <Image
+                    source={{ uri: prova.image }}
+                    style={styles.cardImage}
+                  />
+                ) : null}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={() => deleteProva(prova.id, index)}
+              >
+                <Text style={styles.deleteText}>Excluir</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </ScrollView>
       </View>
-    </View>
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => navigation.navigate("NewTask")}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: "#000",
+  },
+  container: {
+    flex: 1,
     padding: 20,
   },
   header: {
+    marginTop: 20,
     marginBottom: 20,
     flexDirection: "row",
     alignItems: "center",
@@ -157,6 +149,9 @@ const styles = StyleSheet.create({
   },
   list: {
     flex: 1,
+  },
+  listContent: {
+    paddingBottom: 80,
   },
   card: {
     backgroundColor: "#111",
@@ -191,12 +186,10 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
-  fabContainer: {
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-  },
   fab: {
+    position: "absolute",
+    bottom: 30,
+    right: 20,
     backgroundColor: "#1e90ff",
     width: 60,
     height: 60,

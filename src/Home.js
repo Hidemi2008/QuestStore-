@@ -6,8 +6,7 @@ import * as SQLite from "expo-sqlite";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 
-
-const db = Platform.OS !== "web" ? SQLite.openDatabase("provas.db") : null;
+const db = Platform.OS !== "web" ? SQLite.openDatabaseSync("provas.db") : null;
 
 export default function Home({ navigation }) {
   const [count, setCount] = useState(0);
@@ -26,18 +25,12 @@ export default function Home({ navigation }) {
         };
         loadProvas();
       } else {
-        db.transaction(tx => {
-          tx.executeSql(
-            "SELECT COUNT(*) as total FROM provas;",
-            [],
-            (_, { rows }) => {
-              setCount(rows._array[0].total);
-            },
-            (_, error) => {
-              console.log(error);
-            }
-          );
-        });
+        try {
+          const result = db.getFirstSync("SELECT COUNT(*) as total FROM provas;");
+          setCount(result?.total ?? 0);
+        } catch (error) {
+          console.log(error);
+        }
       }
     }, [])
   );

@@ -1,13 +1,16 @@
 import React, { useState } from "react";
-import { ScrollView, Text, View, Image, StyleSheet, TouchableOpacity, Platform, Alert } from "react-native";
+import { ScrollView, Text, View, Image, StyleSheet, TouchableOpacity, Platform, Alert, SafeAreaView } from "react-native";
 import * as SQLite from "expo-sqlite";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
+import Header from "./components/Header";
+import Card from "./components/Card";
+import Fab from "./components/Fab";
 
-const db = Platform.OS !== "web" ? SQLite.openDatabase("provas.db") : null;
+const db = Platform.OS !== "web" ? SQLite.openDatabaseSync("provas.db") : null;
 
 export default function Questions({ route, navigation }) {
-  const { prova } = route.params; // recebe os dados da prova
+  const { prova } = route.params;
   const [questoes, setQuestoes] = useState([]);
 
   async function loadQuestoes() {
@@ -20,21 +23,18 @@ export default function Questions({ route, navigation }) {
         console.log(error);
       }
     } else {
-      db.transaction(tx => {
-        tx.executeSql(
+      try {
+        db.execSync(
           "CREATE TABLE IF NOT EXISTS questoes (id INTEGER PRIMARY KEY AUTOINCREMENT, prova_id INTEGER, title TEXT, description TEXT, image TEXT);"
         );
-        tx.executeSql(
+        const rows = db.getAllSync(
           "SELECT * FROM questoes WHERE prova_id = ?;",
-          [prova.id],
-          (_, { rows }) => {
-            setQuestoes(rows._array);
-          },
-          (_, error) => {
-            console.log(error);
-          }
+          [prova.id]
         );
-      });
+        setQuestoes(rows);
+      } catch (error) {
+        console.log(error);
+      }
     }
   }
 
@@ -43,7 +43,7 @@ export default function Questions({ route, navigation }) {
       try {
         const stored = await AsyncStorage.getItem("questoes");
         let questoes = stored ? JSON.parse(stored) : [];
-        questoes = questoes.filter(q => q.id !== id); // remove pelo id
+        questoes = questoes.filter(q => q.id !== id);
         await AsyncStorage.setItem("questoes", JSON.stringify(questoes));
         setQuestoes(questoes.filter(q => q.prova_id === prova.id));
         Alert.alert("Sucesso", "Questão excluída!");
@@ -52,20 +52,14 @@ export default function Questions({ route, navigation }) {
         Alert.alert("Erro", "Não foi possível excluir a questão.");
       }
     } else {
-      db.transaction(tx => {
-        tx.executeSql(
-          "DELETE FROM questoes WHERE id = ?;",
-          [id],
-          () => {
-            loadQuestoes();
-            Alert.alert("Sucesso", "Questão excluída!");
-          },
-          (_, error) => {
-            console.log(error);
-            Alert.alert("Erro", "Não foi possível excluir a questão.");
-          }
-        );
-      });
+      try {
+        db.runSync("DELETE FROM questoes WHERE id = ?;", [id]);
+        loadQuestoes();
+        Alert.alert("Sucesso", "Questão excluída!");
+      } catch (error) {
+        console.log(error);
+        Alert.alert("Erro", "Não foi possível excluir a questão.");
+      }
     }
   }
 
@@ -76,100 +70,108 @@ export default function Questions({ route, navigation }) {
   );
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Cabeçalho da prova */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{"< Voltar"}</Text>
-        </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <Header title={prova.title} subtitle="Matéria: Matemática" onBack={() => navigation.goBack()} style={styles.header} />
 
-        <View>
-          <Text style={styles.title}>{prova.title}</Text>
-          <Text style={styles.subtitle}>Matéria: Matemática</Text>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        {prova.image ? (
-          <Image source={{ uri: prova.image }} style={styles.cardImage} />
-        ) : null}
-        <Text style={styles.cardTitle}>{prova.title}</Text>
-        <Text style={styles.cardDescription}>
-          {prova.description || "Sem descrição"}
-        </Text>
-      </View>
-
-      {/* Lista de questões */}
-      <Text style={styles.sectionTitle}>
-        {questoes.length} {questoes.length === 1 ? "Questão" : "Questões"}
-      </Text>
-
-      {questoes.map((q, index) => (
-        <View key={index} style={styles.card}>
-          <Text style={styles.cardTitle}>{q.title}</Text>
-          <Text style={styles.cardDescription}>
-            {q.description || "Sem descrição"}
-          </Text>
-          {q.image ? (
-            <Image source={{ uri: q.image }} style={styles.cardImage} />
+        <Card style={styles.card}>
+          {prova.image ? (
+            <Image source={{ uri: prova.image }} style={styles.cardImage} />
           ) : null}
+          <Text style={styles.cardTitle}>{prova.title}</Text>
+          <Text style={styles.cardDescription}>
+            {prova.description || "Sem descrição"}
+          </Text>
+        </Card>
 
-          {/* Botão de excluir questão */}
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => deleteQuestao(q.id, index)}
-          >
-            <Text style={styles.deleteText}>Excluir</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
+        <Text style={styles.sectionTitle}>
+          {questoes.length} {questoes.length === 1 ? "Questão" : "Questões"}
+        </Text>
 
-      {/* Botão para adicionar nova questão */}
+        {questoes.map((q, index) => (
+          <Card key={index} style={styles.card}>
+            <Text style={styles.cardTitle}>{q.title}</Text>
+            <Text style={styles.cardDescription}>
+              {q.description || "Sem descrição"}
+            </Text>
+            {q.image ? (
+              <Image source={{ uri: q.image }} style={styles.cardImage} />
+            ) : null}
+
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={() => deleteQuestao(q.id, index)}
+            >
+              <Text style={styles.deleteText}>Excluir</Text>
+            </TouchableOpacity>
+          </Card>
+        ))}
+      </ScrollView>
+
       <View style={styles.fabContainer}>
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => navigation.navigate("NewQuestions", { prova })}
-        >
-          <Text style={styles.fabText}>+</Text>
-        </TouchableOpacity>
+        <Fab onPress={() => navigation.navigate("NewQuestions", { prova })} />
       </View>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000", padding: 20 },
-  header: { marginBottom: 20, flexDirection: "row", alignItems: "center", gap: 15 },
-  backText: { color: "#1e90ff", fontSize: 18 },
-  title: { fontSize: 26, fontWeight: "bold", color: "#fff" },
-  subtitle: { fontSize: 16, color: "#ccc", marginTop: 5 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  container: {
+    flex: 1,
+    padding: 20,
+  },
+  contentContainer: {
+    paddingBottom: 80,
+  },
+  header: {
+    marginTop: 20,
+  },
   card: {
-    backgroundColor: "#111",
-    padding: 15,
-    borderRadius: 10,
     marginBottom: 15,
   },
-  cardTitle: { fontSize: 18, fontWeight: "bold", color: "#fff", marginBottom: 5 },
-  cardDescription: { fontSize: 14, color: "#ccc" },
-  cardImage: { marginTop: 10, width: "100%", height: 150, borderRadius: 8 },
-  sectionTitle: { fontSize: 20, fontWeight: "bold", color: "#1e90ff", marginVertical: 10 },
-  fabContainer: { position: "absolute", bottom: 20, right: 20 },
-  fab: {
-    backgroundColor: "#1e90ff",
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 5,
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 5,
   },
-  fabText: { fontSize: 28, color: "#fff", fontWeight: "bold" },
+  cardDescription: {
+    fontSize: 14,
+    color: '#ccc',
+  },
+  cardImage: {
+    marginTop: 10,
+    width: '100%',
+    height: 150,
+    borderRadius: 8,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1e90ff',
+    marginVertical: 10,
+  },
   deleteButton: {
     marginTop: 10,
-    backgroundColor: "#ff4444",
+    backgroundColor: '#ff4444',
     padding: 10,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
   },
-  deleteText: { color: "#fff", fontWeight: "bold" },
+  deleteText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  fabContainer: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+  },
 });
