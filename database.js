@@ -7,37 +7,28 @@ export function initDB() {
     tx.executeSql(
       "CREATE TABLE IF NOT EXISTS provas (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, image TEXT);"
     );
-  });
-}
-
-export function addProva(title, description, image) {
-  db.transaction(tx => {
     tx.executeSql(
-      "INSERT INTO provas (title, description, image) VALUES (?, ?, ?);",
-      [title, description, image]
+      "CREATE TABLE IF NOT EXISTS questoes (id INTEGER PRIMARY KEY AUTOINCREMENT, prova_id INTEGER, title TEXT, description TEXT, image TEXT);"
     );
   });
 }
 
-export function getProvas(callback) {
+export function addQuestao(prova_id, title, description, image) {
   db.transaction(tx => {
     tx.executeSql(
-      "SELECT * FROM provas;",
-      [],
+      "INSERT INTO questoes (prova_id, title, description, image) VALUES (?, ?, ?, ?);",
+      [prova_id, title, description, image]
+    );
+  });
+}
+
+export function getQuestoes(prova_id, callback) {
+  db.transaction(tx => {
+    tx.executeSql(
+      "SELECT * FROM questoes WHERE prova_id = ?;",
+      [prova_id],
       (_, { rows }) => {
         callback(rows._array);
-      }
-    );
-  });
-}
-
-export function getCount(callback) {
-  db.transaction(tx => {
-    tx.executeSql(
-      "SELECT COUNT(*) as total FROM provas;",
-      [],
-      (_, { rows }) => {
-        callback(rows._array[0].total);
       }
     );
   });

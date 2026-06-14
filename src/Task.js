@@ -92,19 +92,26 @@ export default function Task({ navigation }) {
       <ScrollView style={styles.list}>
         {provas.map((prova, index) => (
           <View key={index} style={styles.card}>
-            <Text style={styles.cardTitle}>{prova.title}</Text>
-            {prova.description ? (
-              <Text style={styles.cardSubject}>{prova.description}</Text>
-            ) : (
-              <Text style={styles.cardSubject}>Sem descrição</Text>
-            )}
-            {prova.image ? (
-              <Image
-                source={{ uri: prova.image }} // funciona com Base64
-                style={styles.cardImage}
-              />
-            ) : null}
+            {/* Clique no card leva para Questions */}
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Questions", { prova })}
+              style={{ flex: 1 }}
+            >
+              <Text style={styles.cardTitle}>{prova.title}</Text>
+              {prova.description ? (
+                <Text style={styles.cardSubject}>{prova.description}</Text>
+              ) : (
+                <Text style={styles.cardSubject}>Sem descrição</Text>
+              )}
+              {prova.image ? (
+                <Image
+                  source={{ uri: prova.image }}
+                  style={styles.cardImage}
+                />
+              ) : null}
+            </TouchableOpacity>
 
+            {/* Botão de excluir separado */}
             <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => deleteProva(prova.id, index)}
