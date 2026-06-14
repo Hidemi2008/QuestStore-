@@ -23,8 +23,11 @@ export default function Home({navigation}) {
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.buttonPrimary} >
-          <Text style={styles.buttonText}>Nova Prova</Text>
+        <TouchableOpacity
+            style={styles.buttonPrimary}
+            onPress={() => navigation.navigate("NewTask")}
+        >
+        <Text style={styles.buttonText}>Nova Prova</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.buttonSecondary} onPress={() => navigation.navigate('Task')}>
           <Text style={styles.buttonText}>Ver Provas</Text>
