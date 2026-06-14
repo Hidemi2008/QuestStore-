@@ -29,7 +29,7 @@ export default function Task({ navigation }) {
       <View style={styles.fabContainer}>
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => navigation.navigate("Prova")}
+          onPress={() => navigation.navigate("NewTask")}
         >
           <Text style={styles.fabText}>+</Text>
         </TouchableOpacity>

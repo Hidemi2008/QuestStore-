@@ -1,17 +1,28 @@
-import { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, ScrollView } from "react-native";
+import { useState, useEffect } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, ScrollView, Alert } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import * as SQLite from "expo-sqlite";
 
-export default function Prova({ navigation }) {
+const db = SQLite.openDatabase("provas.db");
+
+export default function NewTask({ navigation }) {
   const [image, setImage] = useState(null);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+
+  // Criar tabela ao carregar
+  useEffect(() => {
+    db.transaction(tx => {
+      tx.executeSql(
+        "CREATE TABLE IF NOT EXISTS provas (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, image TEXT);"
+      );
+    });
+  }, []);
 
   async function openCamera() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
-
     if (permission.granted) {
       const result = await ImagePicker.launchCameraAsync();
-
       if (!result.canceled) {
         setImage(result.assets[0].uri);
       }
@@ -20,10 +31,31 @@ export default function Prova({ navigation }) {
 
   async function openGallery() {
     const result = await ImagePicker.launchImageLibraryAsync();
-
     if (!result.canceled) {
       setImage(result.assets[0].uri);
     }
+  }
+
+  function saveProva() {
+    if (!title.trim()) {
+      Alert.alert("Erro", "O campo Assunto é obrigatório.");
+      return;
+    }
+
+    db.transaction(tx => {
+      tx.executeSql(
+        "INSERT INTO provas (title, description, image) VALUES (?, ?, ?);",
+        [title, description, image],
+        (_, result) => {
+          Alert.alert("Sucesso", "Prova cadastrada com sucesso!");
+          navigation.goBack(); // volta para a tela anterior
+        },
+        (_, error) => {
+          console.log(error);
+          Alert.alert("Erro", "Não foi possível salvar a prova.");
+        }
+      );
+    });
   }
 
   return (
@@ -62,7 +94,6 @@ export default function Prova({ navigation }) {
       </View>
 
       <Text style={styles.label}>Assunto</Text>
-
       <TextInput
         placeholder="Ex: Equação 2° Grau"
         placeholderTextColor="#999"
@@ -72,15 +103,16 @@ export default function Prova({ navigation }) {
       />
 
       <Text style={styles.label}>Descrição (opcional)</Text>
-
       <TextInput
         placeholder="Detalhes ou observações sobre a prova..."
         placeholderTextColor="#999"
         style={styles.descriptionInput}
         multiline
+        value={description}
+        onChangeText={setDescription}
       />
 
-      <TouchableOpacity style={styles.saveButton}>
+      <TouchableOpacity style={styles.saveButton} onPress={saveProva}>
         <Text style={styles.saveButtonText}>Salvar Questão</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -93,26 +125,22 @@ const styles = StyleSheet.create({
     backgroundColor: "#000",
     padding: 20,
   },
-
   header: {
     marginBottom: 20,
     flexDirection: "row",
     alignItems: "center",
     gap: 15,
   },
-
   title: {
     fontSize: 28,
     fontWeight: "bold",
     color: "#fff",
     marginBottom: 8,
   },
-
   subtitle: {
     fontSize: 16,
     color: "#ccc",
   },
-
   imageBox: {
     height: 250,
     borderWidth: 1,
@@ -122,19 +150,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-
   image: {
     width: "100%",
     height: "100%",
     borderRadius: 10,
   },
-
   buttons: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 20,
   },
-
   button: {
     backgroundColor: "#1e90ff",
     padding: 12,
@@ -142,26 +167,22 @@ const styles = StyleSheet.create({
     width: "48%",
     alignItems: "center",
   },
-
   buttonText: {
     color: "#fff",
     fontWeight: "bold",
   },
-
   label: {
     color: "#fff",
     fontSize: 16,
     marginBottom: 8,
     marginTop: 10,
   },
-
   input: {
     backgroundColor: "#111",
     color: "#fff",
     padding: 15,
     borderRadius: 8,
   },
-
   descriptionInput: {
     backgroundColor: "#111",
     color: "#fff",
@@ -170,7 +191,6 @@ const styles = StyleSheet.create({
     height: 120,
     textAlignVertical: "top",
   },
-
   saveButton: {
     backgroundColor: "#1e90ff",
     padding: 15,
@@ -179,7 +199,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
   },
-
   saveButtonText: {
     color: "#fff",
     fontWeight: "bold",

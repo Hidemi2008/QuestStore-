@@ -25,7 +25,7 @@ export default function Home({navigation}) {
       <View style={styles.buttonContainer}>
         <TouchableOpacity
             style={styles.buttonPrimary}
-            onPress={() => navigation.navigate("Prova")}
+            onPress={() => navigation.navigate("NewTask")}
         >
         <Text style={styles.buttonText}>Nova Prova</Text>
         </TouchableOpacity>
