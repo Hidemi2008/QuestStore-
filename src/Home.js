@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 
-export default function Home() {
+export default function Home({navigation}) {
   return (
     <View style={styles.container}>
 
@@ -26,7 +26,7 @@ export default function Home() {
         <TouchableOpacity style={styles.buttonPrimary} >
           <Text style={styles.buttonText}>Nova Prova</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.buttonSecondary} onPress={() => navigation.navigate('Next')}>
+        <TouchableOpacity style={styles.buttonSecondary} onPress={() => navigation.navigate('Task')}>
           <Text style={styles.buttonText}>Ver Provas</Text>
         </TouchableOpacity>
       </View>

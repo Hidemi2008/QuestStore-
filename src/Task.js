@@ -4,13 +4,11 @@ export default function Task(){
     return(
         <View style={styles.container}>
 
-            {/* Cabeçalho */}
             <View style={styles.header}>
                 <Text style={styles.title}>Provas</Text>
                 <Text style={styles.subtitle}>4 Provas Cadastradas</Text>
             </View>
 
-            {/* Lista de provas */}
             <View style={styles.list}>
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Prova Bimestral - Funções</Text>
@@ -19,7 +17,6 @@ export default function Task(){
                 </View>
             </View>
 
-            {/* Botão flutuante */}
             <View style={styles.fabContainer}>
                 <TouchableOpacity style={styles.fab}>
                     <Text style={styles.fabText}>+</Text>
@@ -32,7 +29,7 @@ export default function Task(){
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#000", // fundo escuro
+        backgroundColor: "#000",
         padding: 20,
     },
     header: {
