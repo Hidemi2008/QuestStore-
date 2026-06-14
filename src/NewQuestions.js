@@ -6,17 +6,18 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const db = Platform.OS !== "web" ? SQLite.openDatabase("provas.db") : null;
 
-export default function NewTask({ navigation }) {
+export default function NewQuestion({ route, navigation }) {
+  const { prova } = route.params; // recebe a prova para vincular a questão
   const [image, setImage] = useState(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
-  // Criar tabela no SQLite (apenas mobile)
+  // Criar tabela de questões
   useEffect(() => {
     if (Platform.OS !== "web" && db) {
       db.transaction(tx => {
         tx.executeSql(
-          "CREATE TABLE IF NOT EXISTS provas (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, image TEXT);"
+          "CREATE TABLE IF NOT EXISTS questoes (id INTEGER PRIMARY KEY AUTOINCREMENT, prova_id INTEGER, title TEXT, description TEXT, image TEXT);"
         );
       });
     }
@@ -41,45 +42,36 @@ export default function NewTask({ navigation }) {
     }
   }
 
-  async function saveProva() {
+  async function saveQuestao() {
     if (!title.trim()) {
-      Alert.alert("Erro", "O campo Assunto é obrigatório.");
+      Alert.alert("Erro", "O campo Enunciado é obrigatório.");
       return;
     }
 
     if (Platform.OS === "web") {
-      // Salvar no AsyncStorage
       try {
-        const existing = await AsyncStorage.getItem("provas");
-        const provas = existing ? JSON.parse(existing) : [];
-        // Gera um id único para cada prova no Web
-        const newProva = {
-          id: Date.now(), // garante que cada prova tenha um id único
-          title,
-          description,
-          image,
-        };
-        provas.push(newProva);
-        await AsyncStorage.setItem("provas", JSON.stringify(provas));
-        Alert.alert("Sucesso", "Prova cadastrada (Web)!");
+        const existing = await AsyncStorage.getItem("questoes");
+        const questoes = existing ? JSON.parse(existing) : [];
+        questoes.push({ prova_id: prova.id, title, description, image });
+        await AsyncStorage.setItem("questoes", JSON.stringify(questoes));
+        Alert.alert("Sucesso", "Questão cadastrada (Web)!");
         navigation.goBack();
       } catch (error) {
         console.log(error);
-        Alert.alert("Erro", "Não foi possível salvar a prova no Web.");
+        Alert.alert("Erro", "Não foi possível salvar a questão no Web.");
       }
     } else {
-      // Salvar no SQLite
       db.transaction(tx => {
         tx.executeSql(
-          "INSERT INTO provas (title, description, image) VALUES (?, ?, ?);",
-          [title, description, image],
+          "INSERT INTO questoes (prova_id, title, description, image) VALUES (?, ?, ?, ?);",
+          [prova.id, title, description, image],
           () => {
-            Alert.alert("Sucesso", "Prova cadastrada!");
+            Alert.alert("Sucesso", "Questão cadastrada!");
             navigation.goBack();
           },
           (_, error) => {
             console.log(error);
-            Alert.alert("Erro", "Não foi possível salvar a prova.");
+            Alert.alert("Erro", "Não foi possível salvar a questão.");
           }
         );
       });
@@ -94,8 +86,8 @@ export default function NewTask({ navigation }) {
         </TouchableOpacity>
 
         <View>
-          <Text style={styles.title}>Nova Prova</Text>
-          <Text style={styles.subtitle}>Cadastrar Nova Prova</Text>
+          <Text style={styles.title}>Nova Questão</Text>
+          <Text style={styles.subtitle}>Prova: {prova.title}</Text>
         </View>
       </View>
 
@@ -117,9 +109,9 @@ export default function NewTask({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.label}>Assunto</Text>
+      <Text style={styles.label}>Enunciado</Text>
       <TextInput
-        placeholder="Ex: Equação 2° Grau"
+        placeholder="Ex: Equação do 2° Grau"
         placeholderTextColor="#999"
         style={styles.input}
         value={title}
@@ -128,7 +120,7 @@ export default function NewTask({ navigation }) {
 
       <Text style={styles.label}>Descrição (opcional)</Text>
       <TextInput
-        placeholder="Detalhes ou observações sobre a prova..."
+        placeholder="Detalhes ou observações sobre a questão..."
         placeholderTextColor="#999"
         style={styles.descriptionInput}
         multiline
@@ -136,8 +128,8 @@ export default function NewTask({ navigation }) {
         onChangeText={setDescription}
       />
 
-      <TouchableOpacity style={styles.saveButton} onPress={saveProva}>
-        <Text style={styles.saveButtonText}>Salvar Prova</Text>
+      <TouchableOpacity style={styles.saveButton} onPress={saveQuestao}>
+        <Text style={styles.saveButtonText}>Salvar Questão</Text>
       </TouchableOpacity>
     </ScrollView>
   );

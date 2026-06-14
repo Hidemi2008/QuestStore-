@@ -15,7 +15,6 @@ export default function Questions({ route, navigation }) {
       try {
         const stored = await AsyncStorage.getItem("questoes");
         const parsed = stored ? JSON.parse(stored) : [];
-        // filtra apenas questões da prova atual
         setQuestoes(parsed.filter(q => q.prova_id === prova.id));
       } catch (error) {
         console.log(error);
@@ -49,8 +48,14 @@ export default function Questions({ route, navigation }) {
     <ScrollView style={styles.container}>
       {/* Cabeçalho da prova */}
       <View style={styles.header}>
-        <Text style={styles.title}>{prova.title}</Text>
-        <Text style={styles.subtitle}>Matéria: Matemática</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Text style={styles.backText}>{"< Voltar"}</Text>
+        </TouchableOpacity>
+
+        <View>
+          <Text style={styles.title}>{prova.title}</Text>
+          <Text style={styles.subtitle}>Matéria: Matemática</Text>
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -84,7 +89,7 @@ export default function Questions({ route, navigation }) {
       <View style={styles.fabContainer}>
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => navigation.navigate("NewQuestion", { prova })}
+          onPress={() => navigation.navigate("NewQuestions", { prova })}
         >
           <Text style={styles.fabText}>+</Text>
         </TouchableOpacity>
@@ -95,7 +100,8 @@ export default function Questions({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#000", padding: 20 },
-  header: { marginBottom: 20 },
+  header: { marginBottom: 20, flexDirection: "row", alignItems: "center", gap: 15 },
+  backText: { color: "#1e90ff", fontSize: 18 },
   title: { fontSize: 26, fontWeight: "bold", color: "#fff" },
   subtitle: { fontSize: 16, color: "#ccc", marginTop: 5 },
   card: {
