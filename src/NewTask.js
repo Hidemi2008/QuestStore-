@@ -1,61 +1,86 @@
 import { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, ScrollView, Alert } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Image, TextInput, ScrollView, Alert, Platform } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as SQLite from "expo-sqlite";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const db = SQLite.openDatabase("provas.db");
+const db = Platform.OS !== "web" ? SQLite.openDatabase("provas.db") : null;
 
 export default function NewTask({ navigation }) {
   const [image, setImage] = useState(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
-  // Criar tabela ao carregar
+  // Criar tabela no SQLite (apenas mobile)
   useEffect(() => {
-    db.transaction(tx => {
-      tx.executeSql(
-        "CREATE TABLE IF NOT EXISTS provas (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, image TEXT);"
-      );
-    });
+    if (Platform.OS !== "web" && db) {
+      db.transaction(tx => {
+        tx.executeSql(
+          "CREATE TABLE IF NOT EXISTS provas (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, image TEXT);"
+        );
+      });
+    }
   }, []);
 
   async function openCamera() {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (permission.granted) {
-      const result = await ImagePicker.launchCameraAsync();
+      const result = await ImagePicker.launchCameraAsync({
+        base64: true, // agora retorna base64
+        quality: 0.7, // opcional: reduz tamanho
+      });
       if (!result.canceled) {
-        setImage(result.assets[0].uri);
+        const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        setImage(base64Image);
       }
     }
   }
 
   async function openGallery() {
-    const result = await ImagePicker.launchImageLibraryAsync();
+    const result = await ImagePicker.launchImageLibraryAsync({
+      base64: true, // agora retorna base64
+      quality: 0.7,
+    });
     if (!result.canceled) {
-      setImage(result.assets[0].uri);
+      const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      setImage(base64Image);
     }
   }
 
-  function saveProva() {
+  async function saveProva() {
     if (!title.trim()) {
       Alert.alert("Erro", "O campo Assunto é obrigatório.");
       return;
     }
 
-    db.transaction(tx => {
-      tx.executeSql(
-        "INSERT INTO provas (title, description, image) VALUES (?, ?, ?);",
-        [title, description, image],
-        (_, result) => {
-          Alert.alert("Sucesso", "Prova cadastrada com sucesso!");
-          navigation.goBack(); // volta para a tela anterior
-        },
-        (_, error) => {
-          console.log(error);
-          Alert.alert("Erro", "Não foi possível salvar a prova.");
-        }
-      );
-    });
+    if (Platform.OS === "web") {
+      try {
+        const existing = await AsyncStorage.getItem("provas");
+        const provas = existing ? JSON.parse(existing) : [];
+        provas.push({ title, description, image });
+        await AsyncStorage.setItem("provas", JSON.stringify(provas));
+        Alert.alert("Sucesso", "Prova cadastrada (Web)!");
+        navigation.goBack();
+      } catch (error) {
+        console.log(error);
+        Alert.alert("Erro", "Não foi possível salvar a prova no Web.");
+      }
+    } else {
+      db.transaction(tx => {
+        tx.executeSql(
+          "INSERT INTO provas (title, description, image) VALUES (?, ?, ?);",
+          [title, description, image],
+          () => {
+            Alert.alert("Sucesso", "Prova cadastrada!");
+            navigation.goBack();
+          },
+          (_, error) => {
+            console.log(error);
+            Alert.alert("Erro", "Não foi possível salvar a prova.");
+          }
+        );
+      });
+    }
   }
 
   return (
@@ -77,9 +102,7 @@ export default function NewTask({ navigation }) {
         {image ? (
           <Image source={{ uri: image }} style={styles.image} />
         ) : (
-          <Text style={{ color: "#888" }}>
-            Nenhuma imagem selecionada
-          </Text>
+          <Text style={{ color: "#888" }}>Nenhuma imagem selecionada</Text>
         )}
       </View>
 
@@ -120,27 +143,10 @@ export default function NewTask({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000",
-    padding: 20,
-  },
-  header: {
-    marginBottom: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 15,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#ccc",
-  },
+  container: { flex: 1, backgroundColor: "#000", padding: 20 },
+  header: { marginBottom: 20, flexDirection: "row", alignItems: "center", gap: 15 },
+  title: { fontSize: 28, fontWeight: "bold", color: "#fff", marginBottom: 8 },
+  subtitle: { fontSize: 16, color: "#ccc" },
   imageBox: {
     height: 250,
     borderWidth: 1,
@@ -150,39 +156,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  image: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 10,
-  },
-  buttons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  button: {
-    backgroundColor: "#1e90ff",
-    padding: 12,
-    borderRadius: 8,
-    width: "48%",
-    alignItems: "center",
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  label: {
-    color: "#fff",
-    fontSize: 16,
-    marginBottom: 8,
-    marginTop: 10,
-  },
-  input: {
-    backgroundColor: "#111",
-    color: "#fff",
-    padding: 15,
-    borderRadius: 8,
-  },
+  image: { width: "100%", height: "100%", borderRadius: 10 },
+  buttons: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
+  button: { backgroundColor: "#1e90ff", padding: 12, borderRadius: 8, width: "48%", alignItems: "center" },
+  buttonText: { color: "#fff", fontWeight: "bold" },
+  label: { color: "#fff", fontSize: 16, marginBottom: 8, marginTop: 10 },
+  input: { backgroundColor: "#111", color: "#fff", padding: 15, borderRadius: 8 },
   descriptionInput: {
     backgroundColor: "#111",
     color: "#fff",
@@ -199,9 +178,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 20,
   },
-  saveButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
+  saveButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });

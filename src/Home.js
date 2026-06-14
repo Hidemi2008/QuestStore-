@@ -1,38 +1,78 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from "react";
+import { StatusBar } from "expo-status-bar";
+import { StyleSheet, Text, TouchableOpacity, View, Platform } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as SQLite from "expo-sqlite";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 
 
-export default function Home({navigation}) {
+const db = Platform.OS !== "web" ? SQLite.openDatabase("provas.db") : null;
+
+export default function Home({ navigation }) {
+  const [count, setCount] = useState(0);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (Platform.OS === "web") {
+        const loadProvas = async () => {
+          try {
+            const stored = await AsyncStorage.getItem("provas");
+            const parsed = stored ? JSON.parse(stored) : [];
+            setCount(parsed.length);
+          } catch (error) {
+            console.log(error);
+          }
+        };
+        loadProvas();
+      } else {
+        db.transaction(tx => {
+          tx.executeSql(
+            "SELECT COUNT(*) as total FROM provas;",
+            [],
+            (_, { rows }) => {
+              setCount(rows._array[0].total);
+            },
+            (_, error) => {
+              console.log(error);
+            }
+          );
+        });
+      }
+    }, [])
+  );
+
   return (
     <View style={styles.container}>
-
       <Ionicons name="school-outline" size={48} color="#fff" style={styles.icon} />
 
-      <Text style={styles.title}>
-        Banco de Questões
-      </Text>
+      <Text style={styles.title}>Banco de Questões</Text>
 
       <Text style={styles.subtitle}>
         Organize e reutilize suas provas e questões com facilidade.
       </Text>
 
       <View style={styles.card}>
-        <Text style={styles.cardNumber}>4</Text>
+        <Text style={styles.cardNumber}>{count}</Text>
         <Text style={styles.cardText}>Provas Cadastradas</Text>
       </View>
 
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-            style={styles.buttonPrimary}
-            onPress={() => navigation.navigate("NewTask")}
+          style={styles.buttonPrimary}
+          onPress={() => navigation.navigate("NewTask")}
         >
-        <Text style={styles.buttonText}>Nova Prova</Text>
+          <Text style={styles.buttonText}>Nova Prova</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.buttonSecondary} onPress={() => navigation.navigate('Task')}>
+        <TouchableOpacity
+          style={styles.buttonSecondary}
+          onPress={() => navigation.navigate("Task")}
+        >
           <Text style={styles.buttonText}>Ver Provas</Text>
         </TouchableOpacity>
       </View>
+
+      <StatusBar style="light" />
     </View>
   );
 }
@@ -40,9 +80,9 @@ export default function Home({navigation}) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000', 
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 20,
   },
   icon: {
@@ -50,51 +90,51 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 16,
-    color: '#ccc',
-    textAlign: 'center',
+    color: "#ccc",
+    textAlign: "center",
     marginBottom: 20,
   },
   card: {
-    backgroundColor: '#111',
+    backgroundColor: "#111",
     padding: 20,
     borderRadius: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
   },
   cardNumber: {
     fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
   },
   cardText: {
     fontSize: 16,
-    color: '#ccc',
+    color: "#ccc",
   },
   buttonContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 15,
   },
   buttonPrimary: {
-    backgroundColor: '#1e90ff',
+    backgroundColor: "#1e90ff",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
   },
   buttonSecondary: {
-    backgroundColor: '#444',
+    backgroundColor: "#444",
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
   },
   buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
 });
