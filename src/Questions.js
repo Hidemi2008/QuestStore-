@@ -75,7 +75,7 @@ export default function Questions({ route, navigation }) {
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
       >
-        <Header title={prova.title} subtitle="Matéria: Matemática" onBack={() => navigation.goBack()} style={styles.header} />
+        <Header title={prova.title} onBack={() => navigation.goBack()} style={styles.header} />
 
         <Card style={styles.card}>
           {prova.image ? (
